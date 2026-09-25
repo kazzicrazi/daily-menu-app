@@ -1,5 +1,6 @@
 'use client'
 
+import { MenuQRCode } from '@/components/MenuQRCode'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -116,6 +117,34 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
+return (
+  <div className="container mx-auto p-6 space-y-6">
+    {/* 1. Dashboard Header */}
+    <div className="flex justify-between items-center">
+      <h1 className="text-2xl font-bold">Menu Management Dashboard</h1>
+      <div className="flex items-center gap-3">
+        <Button onClick={() => handleOpenDialog()}>Add New Menu</Button>
+        <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+      </div>
+    </div>
+
+    {/* 👇 2. ADD THIS QR CODE SNIPPET HERE 👇 */}
+    <div className="flex justify-center my-6">
+      <MenuQRCode />
+    </div>
+
+    {/* 3. Dialog Form for adding/editing */}
+    <Dialog open={open} onOpenChange={setOpen}>
+      ...
+    </Dialog>
+
+    {/* 4. Menu Table */}
+    <Table>
+      ...
+    </Table>
+  </div>
+
+)
       <Table>
         <TableHeader>
           <TableRow>
