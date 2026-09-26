@@ -2,11 +2,18 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MenuQRCode } from '@/components/MenuQRCode'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -14,88 +21,67 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 
 interface MenuItem {
   id: string
   name: string
-  description: string
+  description?: string
   day_of_week: string
-  meal_type: string
+  meal_type?: string
   image_urls?: string[]
 }
 
-const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
+const DISH_CATEGORIES = ['Local Dish', 'Intercontinental Dish']
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
-function getCurrentWeekDates() {
+function getWeekDates(weekOffset = 0) {
   const now = new Date()
   const dayOfWeek = now.getDay()
   const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
 
   const monday = new Date(now)
-  monday.setDate(now.getDate() + distanceToMonday)
+  monday.setDate(now.getDate() + distanceToMonday + weekOffset * 7)
 
-  const daysName = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-  return daysName.map((dayName, index) => {
+  return DAYS_OF_WEEK.map((dayName, index) => {
     const date = new Date(monday)
     date.setDate(monday.getDate() + index)
     const formattedDate = date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
     })
+
     return {
       dayName,
       formattedDate,
-      fullLabel: `${dayName} (${formattedDate})`,
+      fullLabel: `${dayName}, ${formattedDate}`,
+      isToday: date.toDateString() === new Date().toDateString(),
     }
   })
 }
 
 export default function AdminDashboard() {
   const supabase = createClient()
-
   const [items, setItems] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [open, setOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-
-  const weekDays = useMemo(() => getCurrentWeekDates(), [])
+  const [weekOffset, setWeekOffset] = useState(0)
 
   // Form State
+  const [open, setOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [dayOfWeek, setDayOfWeek] = useState('Monday')
-  const [mealType, setMealType] = useState('Breakfast')
-  const [imageUrls, setImageUrls] = useState<string[]>([])
-  const [imageFiles, setImageFiles] = useState<FileList | null>(null)
+  const [mealType, setMealType] = useState('Local Dish')
+  const [files, setFiles] = useState<FileList | null>(null)
+  const [uploading, setUploading] = useState(false)
 
-  const fetchMenuItems = async () => {
+  const weekDays = useMemo(() => getWeekDates(weekOffset), [weekOffset])
+
+  const fetchItems = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('menus')
-      .select('*')
-      .order('created_at', { ascending: false })
-
+    const { data, error } = await supabase.from('menus').select('*')
     if (error) {
-      console.error('Error fetching menu items:', error)
+      console.error('Error fetching items:', error)
     } else if (data) {
       setItems(data)
     }
@@ -103,65 +89,61 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
-    fetchMenuItems()
+    fetchItems()
   }, [])
 
-  const handleOpenDialog = (item?: MenuItem, defaultDay?: string, defaultMealType?: string) => {
-    setImageFiles(null)
+  const resetForm = () => {
+    setName('')
+    setDescription('')
+    setDayOfWeek('Monday')
+    setMealType('Local Dish')
+    setFiles(null)
+    setEditingItem(null)
+  }
+
+  const handleOpenModal = (item?: MenuItem, defaultDay?: string) => {
     if (item) {
-      setEditingId(item.id)
+      setEditingItem(item)
       setName(item.name)
       setDescription(item.description || '')
       setDayOfWeek(item.day_of_week)
-      setMealType(item.meal_type)
-      setImageUrls(item.image_urls || [])
+      setMealType(item.meal_type || 'Local Dish')
     } else {
-      setEditingId(null)
-      setName('')
-      setDescription('')
-      setDayOfWeek(defaultDay || 'Monday')
-      setMealType(defaultMealType || 'Breakfast')
-      setImageUrls([])
+      resetForm()
+      if (defaultDay) setDayOfWeek(defaultDay)
     }
     setOpen(true)
   }
 
-  const uploadImages = async (files: FileList): Promise<string[]> => {
-    const uploadedUrls: string[] = []
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-      const filePath = `meals/${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('meal-images')
-        .upload(filePath, file)
-
-      if (uploadError) {
-        console.error('Error uploading image:', uploadError)
-        alert(`Failed to upload image ${file.name}: ${uploadError.message}`)
-      } else {
-        const { data } = supabase.storage.from('meal-images').getPublicUrl(filePath)
-        if (data?.publicUrl) {
-          uploadedUrls.push(data.publicUrl)
-        }
-      }
-    }
-
-    return uploadedUrls
-  }
-
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setUploading(true)
 
-    let finalUrls = [...imageUrls]
+    let imageUrls: string[] = editingItem?.image_urls || []
 
-    if (imageFiles && imageFiles.length > 0) {
-      const newUrls = await uploadImages(imageFiles)
-      finalUrls = [...finalUrls, ...newUrls]
+    // Upload new files if selected
+    if (files && files.length > 0) {
+      const uploadedUrls: string[] = []
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Math.random()}.${fileExt}`
+        const filePath = `${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('menu-images')
+          .upload(filePath, file)
+
+        if (uploadError) {
+          console.error('Image upload failed:', uploadError)
+        } else {
+          const { data } = supabase.storage.from('menu-images').getPublicUrl(filePath)
+          if (data?.publicUrl) uploadedUrls.push(data.publicUrl)
+        }
+      }
+      if (uploadedUrls.length > 0) {
+        imageUrls = [...imageUrls, ...uploadedUrls]
+      }
     }
 
     const payload = {
@@ -169,218 +151,247 @@ export default function AdminDashboard() {
       description,
       day_of_week: dayOfWeek,
       meal_type: mealType,
-      image_urls: finalUrls,
+      image_urls: imageUrls,
     }
 
-    try {
-      if (editingId) {
-        const { error } = await supabase
-          .from('menus')
-          .update(payload)
-          .eq('id', editingId)
-
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from('menus')
-          .insert([payload])
-
-        if (error) throw error
-      }
-
-      setOpen(false)
-      fetchMenuItems()
-    } catch (err: unknown) {
-      const error = err as Error
-      console.error('Error saving meal:', error)
-      alert(`Failed to save meal: ${error.message || 'Unknown database error'}`)
-    } finally {
-      setUploading(false)
+    if (editingItem) {
+      const { error } = await supabase.from('menus').update(payload).eq('id', editingItem.id)
+      if (error) console.error('Error updating meal:', error)
+    } else {
+      const { error } = await supabase.from('menus').insert([payload])
+      if (error) console.error('Error adding meal:', error)
     }
+
+    setUploading(false)
+    setOpen(false)
+    resetForm()
+    fetchItems()
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this menu item?')) {
-      const { error } = await supabase.from('menus').delete().eq('id', id)
-      if (error) {
-        alert(`Failed to delete meal: ${error.message}`)
-      } else {
-        fetchMenuItems()
-      }
-    }
+    if (!confirm('Are you sure you want to delete this menu item?')) return
+    const { error } = await supabase.from('menus').delete().eq('id', id)
+    if (error) console.error('Error deleting item:', error)
+    else fetchItems()
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-8 space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Canteen Admin Dashboard</h1>
-          <p className="text-sm text-slate-500">Structured menu schedule by weekday and category</p>
+    <main className="min-h-screen bg-[#F4F8F6] p-4 md:p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header */}
+        <header className="flex flex-col md:flex-row justify-between items-center bg-gradient-to-r from-[#00A859] to-[#008F4C] text-white p-6 rounded-2xl shadow-md border-b-4 border-[#002B49] gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold">Admin Canteen Dashboard</h1>
+            <p className="text-emerald-100 text-sm mt-1">Manage daily Local and Intercontinental menus</p>
+          </div>
+
+          <Button
+            onClick={() => handleOpenModal()}
+            className="bg-[#002B49] hover:bg-[#001D33] text-white font-bold px-5 py-2 rounded-xl shadow-md"
+          >
+            + Add New Meal
+          </Button>
+        </header>
+
+        {/* Week Navigator */}
+        <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+          <Button
+            variant="outline"
+            onClick={() => setWeekOffset((prev) => prev - 1)}
+            className="border-slate-300 text-[#002B49] font-bold"
+          >
+            ← Previous Week
+          </Button>
+          <div className="text-center">
+            <span className="text-sm font-bold text-[#002B49]">
+              {weekOffset === 0
+                ? 'Current Week'
+                : weekOffset === 1
+                ? 'Next Week'
+                : weekOffset > 1
+                ? `${weekOffset} Weeks Ahead`
+                : `${Math.abs(weekOffset)} Weeks Ago`}
+            </span>
+            <p className="text-xs text-slate-500">
+              {weekDays[0].formattedDate} – {weekDays[6].formattedDate}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setWeekOffset((prev) => prev + 1)}
+            className="border-slate-300 text-[#002B49] font-bold"
+          >
+            Next Week →
+          </Button>
         </div>
-        <Button onClick={() => handleOpenDialog()}>+ Add New Meal</Button>
-      </div>
 
-      <div className="flex justify-center my-4">
-        <MenuQRCode />
-      </div>
+        {/* Days of Week Overview */}
+        {loading ? (
+          <p className="text-center py-12 text-slate-500 font-medium">Loading schedule...</p>
+        ) : (
+          <div className="space-y-8">
+            {weekDays.map((day) => {
+              const dayItems = items.filter(
+                (item) => item.day_of_week?.toLowerCase() === day.dayName.toLowerCase()
+              )
 
-      {loading ? (
-        <div className="text-center py-12 text-slate-500">Loading structured menu...</div>
-      ) : (
-        <div className="space-y-8">
-          {weekDays.map((day) => {
-            const dayItems = items.filter(
-              (i) => i.day_of_week?.toLowerCase() === day.dayName.toLowerCase()
-            )
-
-            return (
-              <Card key={day.dayName} className="shadow-sm border-slate-200">
-                <CardHeader className="bg-slate-100/70 border-b pb-3 flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CardTitle className="text-xl font-bold text-slate-800">
-                      {day.dayName}
+              return (
+                <Card key={day.dayName} className="border-slate-200 bg-white shadow-sm overflow-hidden">
+                  <CardHeader className="bg-slate-50 border-b border-slate-200 flex flex-row items-center justify-between py-3">
+                    <CardTitle className="text-lg font-bold text-[#002B49] flex items-center gap-2">
+                      <span>{day.fullLabel}</span>
+                      {day.isToday && <Badge className="bg-[#00A859] text-white text-xs">Today</Badge>}
                     </CardTitle>
-                    <span className="text-sm text-slate-500 font-normal">({day.formattedDate})</span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenDialog(undefined, day.dayName)}
-                  >
-                    + Add to {day.dayName}
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {dayItems.length === 0 ? (
-                    <div className="p-6 text-center text-slate-400 text-sm">
-                      No meals scheduled for {day.dayName}.
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-slate-50/50">
-                          <TableHead className="w-[120px]">Category</TableHead>
-                          <TableHead className="w-[120px]">Images</TableHead>
-                          <TableHead>Meal Name & Info</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {MEAL_TYPES.map((category) => {
-                          const categoryItems = dayItems.filter(
-                            (i) => i.meal_type?.toLowerCase() === category.toLowerCase()
-                          )
+                    <Button
+                      size="sm"
+                      onClick={() => handleOpenModal(undefined, day.dayName)}
+                      className="bg-[#00A859] hover:bg-[#008F4C] text-white text-xs font-bold"
+                    >
+                      + Add to {day.dayName}
+                    </Button>
+                  </CardHeader>
 
-                          if (categoryItems.length === 0) return null
+                  <CardContent className="p-4 space-y-6">
+                    {dayItems.length === 0 ? (
+                      <p className="text-slate-400 text-sm italic py-2">No meals assigned for this day.</p>
+                    ) : (
+                      DISH_CATEGORIES.map((category) => {
+                        const categoryItems = dayItems.filter(
+                          (i) => i.meal_type?.toLowerCase() === category.toLowerCase()
+                        )
 
-                          return categoryItems.map((item) => (
-                            <TableRow key={item.id} className="hover:bg-slate-50/80">
-                              <TableCell>
-                                <Badge variant="secondary" className="font-semibold">
-                                  {item.meal_type}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {item.image_urls && item.image_urls.length > 0 ? (
-                                  <div className="flex gap-1 overflow-x-auto max-w-[140px]">
-                                    {item.image_urls.map((url, idx) => (
-                                      <img
-                                        key={idx}
-                                        src={url}
-                                        alt={`${item.name} ${idx + 1}`}
-                                        className="w-10 h-10 object-cover rounded border flex-shrink-0"
-                                      />
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="w-10 h-10 bg-slate-100 rounded border flex items-center justify-center text-[10px] text-slate-400">
-                                    No Pic
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                <div>{item.name}</div>
-                                {item.description && (
-                                  <p className="text-xs text-slate-500 font-normal mt-0.5">
-                                    {item.description}
-                                  </p>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right space-x-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleOpenDialog(item)}
+                        if (categoryItems.length === 0) return null
+
+                        return (
+                          <div key={category} className="space-y-3">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-1">
+                              <h3 className="text-sm font-bold text-[#002B49]">{category}</h3>
+                              <Badge className="bg-[#002B49] text-white text-xs">
+                                {categoryItems.length}
+                              </Badge>
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                              {categoryItems.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="border border-slate-200 rounded-lg p-3 bg-slate-50 flex flex-col justify-between space-y-2 shadow-xs"
                                 >
-                                  Edit / Add Photos
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleDelete(item.id)}
-                                >
-                                  Delete
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        })}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+                                  <div>
+                                    {item.image_urls && item.image_urls.length > 0 && (
+                                      <div className="flex gap-1 overflow-x-auto mb-2 h-24 rounded-md overflow-hidden">
+                                        {item.image_urls.map((url, idx) => (
+                                          <img
+                                            key={idx}
+                                            src={url}
+                                            alt={item.name}
+                                            className="w-full h-full object-cover rounded-sm"
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                    <h4 className="font-bold text-[#002B49] text-base">{item.name}</h4>
+                                    {item.description && (
+                                      <p className="text-xs text-slate-600 line-clamp-2 mt-1">
+                                        {item.description}
+                                      </p>
+                                    )}
+                                  </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <form onSubmit={handleSave}>
+                                  <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleOpenModal(item)}
+                                      className="text-xs h-7 border-slate-300 text-slate-700"
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => handleDelete(item.id)}
+                                      className="text-xs h-7 bg-red-600 hover:bg-red-700 text-white"
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Solid Dark Pop-Up Modal */}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="bg-slate-900 text-white border border-slate-700 shadow-2xl rounded-2xl max-w-lg p-6">
             <DialogHeader>
-              <DialogTitle>{editingId ? 'Edit Meal' : 'Add New Meal'}</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-white">
+                {editingItem ? 'Edit Meal Entry' : 'Add New Meal Entry'}
+              </DialogTitle>
             </DialogHeader>
 
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Meal Name</Label>
+            <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+              <div>
+                <label className="text-xs font-bold text-slate-300">Meal Name</label>
                 <Input
-                  id="name"
+                  required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Rice, Chicken & Ice Cream"
-                  required
+                  placeholder="e.g. Jollof Rice & Fried Chicken"
+                  className="bg-slate-800 border-slate-700 text-white mt-1 placeholder:text-slate-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300">Description</label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Optional details or side dishes..."
+                  className="bg-slate-800 border-slate-700 text-white mt-1 placeholder:text-slate-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Day & Date</Label>
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Day of Week</label>
                   <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
+                      <SelectValue placeholder="Select Day" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {weekDays.map((day) => (
-                        <SelectItem key={day.dayName} value={day.dayName}>
-                          {day.fullLabel}
+                    <SelectContent className="bg-slate-900 border-slate-700 text-white">
+                      {DAYS_OF_WEEK.map((day) => (
+                        <SelectItem key={day} value={day} className="focus:bg-slate-800 focus:text-white">
+                          {day}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label>Meal Category</Label>
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Dish Category</label>
                   <Select value={mealType} onValueChange={setMealType}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
+                      <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {MEAL_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
+                    <SelectContent className="bg-slate-900 border-slate-700 text-white">
+                      {DISH_CATEGORIES.map((category) => (
+                        <SelectItem
+                          key={category}
+                          value={category}
+                          className="focus:bg-slate-800 focus:text-white"
+                        >
+                          {category}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -388,51 +399,38 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="images">Food Photos (Select Multiple)</Label>
+              <div>
+                <label className="text-xs font-bold text-slate-300">Meal Photos (Multiple Allowed)</label>
                 <Input
-                  id="images"
                   type="file"
-                  accept="image/*"
                   multiple
-                  onChange={(e) => setImageFiles(e.target.files)}
-                />
-                {imageUrls.length > 0 && (
-                  <div className="flex gap-1 mt-1 overflow-x-auto">
-                    {imageUrls.map((url, i) => (
-                      <img
-                        key={i}
-                        src={url}
-                        alt="Preview"
-                        className="w-12 h-12 object-cover rounded border"
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description (Optional)</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. Served with fried rice, baked chicken, and chocolate ice cream"
+                  accept="image/*"
+                  onChange={(e) => setFiles(e.target.files)}
+                  className="bg-slate-800 border-slate-700 text-white mt-1 file:bg-slate-700 file:text-white file:border-0 file:rounded-md file:px-2 file:py-1 file:mr-2"
                 />
               </div>
-            </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={uploading}>
-                {uploading ? 'Uploading...' : editingId ? 'Save Changes' : 'Create Meal'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setOpen(false)}
+                  className="text-slate-400 hover:text-white hover:bg-slate-800"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={uploading}
+                  className="bg-[#00A859] hover:bg-[#008F4C] text-white font-bold"
+                >
+                  {uploading ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Meal'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </main>
   )
 }
