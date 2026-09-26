@@ -23,8 +23,20 @@ export default function PublicMenuPage() {
   const [items, setItems] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Default to Monday
-  const [selectedDay, setSelectedDay] = useState('Monday')
+  // Dynamically set selectedDay to today's day of the week on load
+  const [selectedDay, setSelectedDay] = useState<string>(() => {
+    const todayIndex = new Date().getDay() // 0 = Sunday, 1 = Monday, ...
+    const dayMap: { [key: number]: string } = {
+      0: 'Sunday',
+      1: 'Monday',
+      2: 'Tuesday',
+      3: 'Wednesday',
+      4: 'Thursday',
+      5: 'Friday',
+      6: 'Saturday',
+    }
+    return dayMap[todayIndex] || 'Monday'
+  })
 
   const fetchMenu = async () => {
     setLoading(true)
@@ -50,7 +62,7 @@ export default function PublicMenuPage() {
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Today's Canteen Menu</h1>
-          <p className="text-slate-600">Freshly prepared daily meals</p>
+          <p className="text-slate-600">Freshly prepared daily meals for {selectedDay}</p>
         </header>
 
         {/* Day Selector Pills */}
