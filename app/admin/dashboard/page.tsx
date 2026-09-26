@@ -45,7 +45,7 @@ interface MenuItem {
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const MEAL_TYPES = ['Breakfast', 'Lunch', 'Snacks']
+const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner','Snacks']
 
 export default function AdminDashboard() {
   const supabase = createClient()
@@ -100,6 +100,56 @@ export default function AdminDashboard() {
     setOpen(true)
   }
 
+  // Handle Save (Create New or Edit Existing Meal)
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    const payload = {
+      name,
+      description,
+      price: parseFloat(price) || 0,
+      day_of_week: dayOfWeek,
+      meal_type: mealType,
+    }
+
+    try {
+      if (editingId) {
+        // Update existing meal record
+        const { error } = await supabase
+          .from('menus')
+          .update(payload)
+          .eq('id', editingId)
+
+        if (error) throw error
+      } else {
+        // Insert new meal record
+        const { error } = await supabase
+          .from('menus')
+          .insert([payload])
+
+        if (error) throw error
+      }
+
+      // Close modal and refresh menu list
+      setOpen(false)
+      fetchMenuItems()
+    } catch (err: any) {
+      console.error('Error saving meal:', err)
+      alert(`Failed to save meal: ${err.message || 'Unknown database error'}`)
+    }
+  }
+
+  // Delete Meal
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this menu item?')) {
+      const { error } = await supabase.from('menus').delete().eq('id', id)
+      if (error) {
+        alert(`Failed to delete meal: ${error.message}`)
+      } else {
+        fetchMenuItems()
+      }
+    }
+  }
   // Save (Create or Update)
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -130,7 +180,9 @@ export default function AdminDashboard() {
       await supabase.from('menus').delete().eq('id', id)
       fetchMenuItems()
     }
+
   }
+
 
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-6">
