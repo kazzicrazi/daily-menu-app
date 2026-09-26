@@ -170,94 +170,87 @@ export default function PublicMenuPage() {
           })}
         </div>
 
-        {loading ? (
-          <p className="text-center py-12 text-slate-500 font-medium">Loading menu items...</p>
-        ) : items.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-slate-200 p-8">
-            <p className="text-slate-800 text-lg font-bold">
-              No meals scheduled for {selectedDayObj.fullLabel}
-            </p>
-            <p className="text-slate-500 text-sm mt-1">Select another day above to view dishes.</p>
+       {loading ? (
+  <p className="text-center py-12 text-slate-500 font-medium">Loading menu items...</p>
+) : items.length === 0 ? (
+  <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+    <p className="text-slate-800 text-lg font-bold">
+      No meals scheduled for {selectedDayObj.fullLabel}
+    </p>
+    <p className="text-slate-500 text-sm mt-1">Select another day above to view dishes.</p>
+  </div>
+) : (
+  <div className="space-y-8">
+    {MEAL_TIMES.map((mealTime) => {
+      const mealTimeItems = items.filter(
+        (item) =>
+          (item.meal_time || item.meal_type)?.toLowerCase() === mealTime.toLowerCase()
+      )
+
+      // Skip rendering section if empty
+      if (mealTimeItems.length === 0) return null
+
+      return (
+        <section key={mealTime} className="space-y-4">
+          <div className="flex items-center gap-3 border-b-2 border-teal-600 pb-2">
+            <h2 className="text-2xl font-extrabold text-teal-900">{mealTime}</h2>
+            <Badge className="bg-teal-700 text-white font-bold px-2.5 py-0.5 rounded-full">
+              {mealTimeItems.length}
+            </Badge>
           </div>
-        ) : (
-          <div className="space-y-8">
-            {MEAL_TIMES.map((mealTime) => {
-              const mealTimeItems = items.filter(
-                (item) =>
-                  (item.meal_time || item.meal_type)?.toLowerCase() === mealTime.toLowerCase()
-              )
 
-              if (mealTimeItems.length === 0) return null
+          {DISH_TYPES.map((dishType) => {
+            const dishItems = mealTimeItems.filter(
+              (item) => item.dish_type?.toLowerCase() === dishType.toLowerCase()
+            )
 
-              return (
-                <section key={mealTime} className="space-y-4">
-                  <div className="flex items-center gap-3 border-b-2 border-teal-600 pb-2">
-                    <h2 className="text-2xl font-extrabold text-teal-900">{mealTime}</h2>
-                    <Badge className="bg-teal-700 text-white font-bold px-2.5 py-0.5 rounded-full">
-                      {mealTimeItems.length}
-                    </Badge>
-                  </div>
+            if (dishItems.length === 0) return null
 
-                  {DISH_TYPES.map((dishType) => {
-                    const dishItems = mealTimeItems.filter(
-                      (item) => item.dish_type?.toLowerCase() === dishType.toLowerCase()
-                    )
+            return (
+              <div key={dishType} className="space-y-3 pl-2">
+                <h3 className="text-base font-bold text-slate-700 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  {dishType}
+                </h3>
 
-                    if (dishItems.length === 0) return null
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {dishItems.map((item) => {
+                    const images = extractImageUrls(item)
 
                     return (
-                      <div key={dishType} className="space-y-3 pl-2">
-                        <h3 className="text-base font-bold text-slate-700 flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                          {dishType}
-                        </h3>
-
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          {dishItems.map((item) => {
-                            const images = extractImageUrls(item)
-
-                            return (
-                              <Card key={item.id} className="overflow-hidden shadow-sm border-slate-200 bg-white">
-                                {images.length > 0 && (
-                                  <div
-                                    className={`grid gap-1 bg-slate-100 ${
-                                      images.length === 1
-                                        ? 'grid-cols-1 h-52'
-                                        : images.length === 2
-                                        ? 'grid-cols-2 h-52'
-                                        : 'grid-cols-3 h-52'
-                                    }`}
-                                  >
-                                    {images.map((url, idx) => (
-                                      <img
-                                        key={idx}
-                                        src={url}
-                                        alt={`${item.name} image ${idx + 1}`}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-                                <CardHeader className="pb-2">
-                                  <CardTitle className="text-lg font-bold text-slate-800">{item.name}</CardTitle>
-                                </CardHeader>
-                                {item.description && (
-                                  <CardContent>
-                                    <p className="text-sm text-slate-600">{item.description}</p>
-                                  </CardContent>
-                                )}
-                              </Card>
-                            )
-                          })}
-                        </div>
-                      </div>
+                      <Card key={item.id} className="overflow-hidden shadow-sm border-slate-200 bg-white">
+                        {images.length > 0 && (
+                          <div className="grid gap-1 bg-slate-100 h-52 grid-cols-1">
+                            {images.map((url, idx) => (
+                              <img
+                                key={idx}
+                                src={url}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-lg font-bold text-slate-800">{item.name}</CardTitle>
+                        </CardHeader>
+                        {item.description && (
+                          <CardContent>
+                            <p className="text-sm text-slate-600">{item.description}</p>
+                          </CardContent>
+                        )}
+                      </Card>
                     )
                   })}
-                </section>
-              )
-            })}
-          </div>
-        )}
+                </div>
+              </div>
+            )
+          })}
+        </section>
+      )
+    })}
+  </div>
+)}
       </div>
     </main>
   )

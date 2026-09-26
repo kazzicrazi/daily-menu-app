@@ -319,91 +319,81 @@ export default function AdminDashboard() {
                     </Button>
                   </CardHeader>
 
-                  <CardContent className="p-4 space-y-6">
-                    {dayItems.length === 0 ? (
-                      <p className="text-slate-400 text-sm italic py-2">No meals assigned for this day.</p>
-                    ) : (
-                      MEAL_TIMES.map((mealTime) => {
-                        const mealTimeItems = dayItems.filter(
-                          (i) =>
-                            (i.meal_time || i.meal_type)?.toLowerCase() === mealTime.toLowerCase()
-                        )
+                 <CardContent className="p-4 space-y-6">
+  {dayItems.length === 0 ? (
+    <p className="text-slate-400 text-sm italic py-2">No meals assigned for this day.</p>
+  ) : (
+    MEAL_TIMES.map((mealTime) => {
+      const mealTimeItems = dayItems.filter(
+        (i) => (i.meal_time || i.meal_type)?.toLowerCase() === mealTime.toLowerCase()
+      )
 
-                        if (mealTimeItems.length === 0) return null
+      if (mealTimeItems.length === 0) return null
 
-                        return (
-                          <div key={mealTime} className="space-y-3 pl-2 border-l-2 border-teal-500">
-                            <h3 className="text-base font-bold text-teal-800">{mealTime}</h3>
+      return (
+        <div key={mealTime} className="space-y-4">
+          <h3 className="text-base font-bold text-teal-800 border-b border-teal-100 pb-1">
+            {mealTime}
+          </h3>
 
-                            {DISH_TYPES.map((dishType) => {
-                              const dishItems = mealTimeItems.filter(
-                                (i) => i.dish_type?.toLowerCase() === dishType.toLowerCase()
-                              )
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+            {mealTimeItems.map((item) => (
+              <div
+                key={item.id}
+                className="border border-slate-200 rounded-lg p-3 bg-slate-50 flex flex-col justify-between space-y-2"
+              >
+                <div>
+                  {item.dish_type && (
+                    <Badge variant="outline" className="text-[10px] font-semibold text-slate-600 bg-slate-100 mb-2">
+                      {item.dish_type}
+                    </Badge>
+                  )}
+                  {item.image_urls && item.image_urls.length > 0 && (
+                    <div className="flex gap-1 overflow-x-auto mb-2 h-24 rounded-md overflow-hidden">
+                      {item.image_urls.map((url, idx) => (
+                        <img
+                          key={idx}
+                          src={url}
+                          alt={item.name}
+                          className="w-full h-full object-cover rounded-sm"
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <h4 className="font-bold text-slate-800 text-sm">{item.name}</h4>
+                  {item.description && (
+                    <p className="text-xs text-slate-600 line-clamp-2 mt-1">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
 
-                              if (dishItems.length === 0) return null
-
-                              return (
-                                <div key={dishType} className="space-y-2">
-                                  <Badge variant="outline" className="text-xs font-semibold text-slate-600 bg-slate-100">
-                                    {dishType} ({dishItems.length})
-                                  </Badge>
-
-                                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                                    {dishItems.map((item) => (
-                                      <div
-                                        key={item.id}
-                                        className="border border-slate-200 rounded-lg p-3 bg-slate-50 flex flex-col justify-between space-y-2"
-                                      >
-                                        <div>
-                                          {item.image_urls && item.image_urls.length > 0 && (
-                                            <div className="flex gap-1 overflow-x-auto mb-2 h-24 rounded-md overflow-hidden">
-                                              {item.image_urls.map((url, idx) => (
-                                                <img
-                                                  key={idx}
-                                                  src={url}
-                                                  alt={item.name}
-                                                  className="w-full h-full object-cover rounded-sm"
-                                                />
-                                              ))}
-                                            </div>
-                                          )}
-                                          <h4 className="font-bold text-slate-800 text-sm">{item.name}</h4>
-                                          {item.description && (
-                                            <p className="text-xs text-slate-600 line-clamp-2 mt-1">
-                                              {item.description}
-                                            </p>
-                                          )}
-                                        </div>
-
-                                        <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => handleOpenModal(item)}
-                                            className="text-xs h-7 border-slate-300 text-slate-700"
-                                          >
-                                            Edit
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="destructive"
-                                            onClick={() => handleDelete(item.id)}
-                                            className="text-xs h-7 bg-red-600 hover:bg-red-700 text-white"
-                                          >
-                                            Delete
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )
-                      })
-                    )}
-                  </CardContent>
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenModal(item)}
+                    className="text-xs h-7 border-slate-300 text-slate-700"
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(item.id)}
+                    className="text-xs h-7 bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    })
+  )}
+</CardContent>
                 </Card>
               )
             })}
