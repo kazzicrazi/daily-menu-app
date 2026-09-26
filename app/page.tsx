@@ -12,6 +12,7 @@ interface MenuItem {
   description: string
   day_of_week: string
   meal_type: string
+  image_url?: string
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -77,7 +78,6 @@ export default function PublicMenuPage() {
         ) : (
           <div className="space-y-8">
             {MEAL_TYPES.map((category) => {
-              // Filter items for the specific category (case-insensitive)
               const categoryItems = items.filter(
                 (item) => item.meal_type?.toLowerCase() === category.toLowerCase()
               )
@@ -91,9 +91,18 @@ export default function PublicMenuPage() {
                     <Badge variant="secondary">{categoryItems.length}</Badge>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                     {categoryItems.map((item) => (
-                      <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow">
+                      <Card key={item.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                        {item.image_url && (
+                          <div className="w-full h-48 overflow-hidden bg-slate-100">
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
                         <CardHeader className="pb-2">
                           <CardTitle className="text-lg font-bold">{item.name}</CardTitle>
                         </CardHeader>

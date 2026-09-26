@@ -38,6 +38,7 @@ interface MenuItem {
   description: string
   day_of_week: string
   meal_type: string
+  image_url?: string
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -50,12 +51,15 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   // Form State
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [dayOfWeek, setDayOfWeek] = useState('Monday')
   const [mealType, setMealType] = useState('Breakfast')
+  const [imageUrl, setImageUrl] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
 
   const fetchMenuItems = async () => {
     setLoading(true)
@@ -77,30 +81,63 @@ export default function AdminDashboard() {
   }, [])
 
   const handleOpenDialog = (item?: MenuItem) => {
+    setImageFile(null)
     if (item) {
       setEditingId(item.id)
       setName(item.name)
       setDescription(item.description || '')
       setDayOfWeek(item.day_of_week)
       setMealType(item.meal_type)
+      setImageUrl(item.image_url || '')
     } else {
       setEditingId(null)
       setName('')
       setDescription('')
       setDayOfWeek('Monday')
       setMealType('Breakfast')
+      setImageUrl('')
     }
     setOpen(true)
   }
 
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+    const filePath = `meals/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('meal-images')
+      .upload(filePath, file)
+
+    if (uploadError) {
+      console.error('Error uploading image:', uploadError)
+      alert(`Failed to upload image: ${uploadError.message}`)
+      return null
+    }
+
+    const { data } = supabase.storage.from('meal-images').getPublicUrl(filePath)
+    return data.publicUrl
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
+    setUploading(true)
+
+    let finalImageUrl = imageUrl
+
+    if (imageFile) {
+      const uploadedUrl = await uploadImage(imageFile)
+      if (uploadedUrl) {
+        finalImageUrl = uploadedUrl
+      }
+    }
 
     const payload = {
       name,
       description,
       day_of_week: dayOfWeek,
       meal_type: mealType,
+      image_url: finalImageUrl,
     }
 
     try {
@@ -125,6 +162,8 @@ export default function AdminDashboard() {
       const error = err as Error
       console.error('Error saving meal:', error)
       alert(`Failed to save meal: ${error.message || 'Unknown database error'}`)
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -144,7 +183,7 @@ export default function AdminDashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Canteen Admin Dashboard</h1>
-          <p className="text-sm text-slate-500">Manage daily menu uploads and edits</p>
+          <p className="text-sm text-slate-500">Manage daily menu uploads, photos, and edits</p>
         </div>
         <Button onClick={() => handleOpenDialog()}>+ Add New Meal</Button>
       </div>
@@ -158,6 +197,7 @@ export default function AdminDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Image</TableHead>
                 <TableHead>Meal Name</TableHead>
                 <TableHead>Day</TableHead>
                 <TableHead>Category</TableHead>
@@ -167,19 +207,32 @@ export default function AdminDashboard() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-6 text-slate-500">
+                  <TableCell colSpan={5} className="text-center py-6 text-slate-500">
                     Loading menu items...
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-6 text-slate-500">
+                  <TableCell colSpan={5} className="text-center py-6 text-slate-500">
                     No menu items found. Click "+ Add New Meal" to create one.
                   </TableCell>
                 </TableRow>
               ) : (
                 items.map((item) => (
                   <TableRow key={item.id}>
+                    <TableCell>
+                      {item.image_url ? (
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
+                          className="w-12 h-12 object-cover rounded-md border"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-slate-100 rounded-md border flex items-center justify-center text-xs text-slate-400">
+                          No Pic
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {item.name}
                       {item.description && (
@@ -226,7 +279,7 @@ export default function AdminDashboard() {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Jollof Rice & Fried Chicken"
+                  placeholder="e.g. Eba & Egusi Soup"
                   required
                 />
               </div>
@@ -266,12 +319,25 @@ export default function AdminDashboard() {
               </div>
 
               <div className="grid gap-2">
+                <Label htmlFor="image">Food Photo</Label>
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                />
+                {imageUrl && !imageFile && (
+                  <p className="text-xs text-slate-500">Current photo uploaded and attached.</p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
                 <Label htmlFor="description">Description (Optional)</Label>
                 <Textarea
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. Served with plantain and coleslaw"
+                  placeholder="e.g. Served hot with fresh fish or chicken"
                 />
               </div>
             </div>
@@ -280,7 +346,9 @@ export default function AdminDashboard() {
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">{editingId ? 'Save Changes' : 'Create Meal'}</Button>
+              <Button type="submit" disabled={uploading}>
+                {uploading ? 'Uploading...' : editingId ? 'Save Changes' : 'Create Meal'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
