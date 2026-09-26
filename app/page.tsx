@@ -12,7 +12,7 @@ interface MenuItem {
   description: string
   day_of_week: string
   meal_type: string
-  image_url?: string
+  image_urls?: string[]
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -91,16 +91,28 @@ export default function PublicMenuPage() {
                     <Badge variant="secondary">{categoryItems.length}</Badge>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                  <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2">
                     {categoryItems.map((item) => (
                       <Card key={item.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                        {item.image_url && (
-                          <div className="w-full h-48 overflow-hidden bg-slate-100">
-                            <img
-                              src={item.image_url}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
+                        {/* Multiple Image Gallery Grid */}
+                        {item.image_urls && item.image_urls.length > 0 && (
+                          <div
+                            className={`grid gap-1 bg-slate-100 ${
+                              item.image_urls.length === 1
+                                ? 'grid-cols-1 h-48'
+                                : item.image_urls.length === 2
+                                ? 'grid-cols-2 h-48'
+                                : 'grid-cols-3 h-48'
+                            }`}
+                          >
+                            {item.image_urls.map((url, idx) => (
+                              <img
+                                key={idx}
+                                src={url}
+                                alt={`${item.name} photo ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            ))}
                           </div>
                         )}
                         <CardHeader className="pb-2">

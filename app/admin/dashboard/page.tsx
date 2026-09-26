@@ -38,7 +38,7 @@ interface MenuItem {
   description: string
   day_of_week: string
   meal_type: string
-  image_url?: string
+  image_urls?: string[]
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -58,8 +58,8 @@ export default function AdminDashboard() {
   const [description, setDescription] = useState('')
   const [dayOfWeek, setDayOfWeek] = useState('Monday')
   const [mealType, setMealType] = useState('Breakfast')
-  const [imageUrl, setImageUrl] = useState('')
-  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageUrls, setImageUrls] = useState<string[]>([])
+  const [imageFiles, setImageFiles] = useState<FileList | null>(null)
 
   const fetchMenuItems = async () => {
     setLoading(true)
@@ -81,55 +81,61 @@ export default function AdminDashboard() {
   }, [])
 
   const handleOpenDialog = (item?: MenuItem) => {
-    setImageFile(null)
+    setImageFiles(null)
     if (item) {
       setEditingId(item.id)
       setName(item.name)
       setDescription(item.description || '')
       setDayOfWeek(item.day_of_week)
       setMealType(item.meal_type)
-      setImageUrl(item.image_url || '')
+      setImageUrls(item.image_urls || [])
     } else {
       setEditingId(null)
       setName('')
       setDescription('')
       setDayOfWeek('Monday')
       setMealType('Breakfast')
-      setImageUrl('')
+      setImageUrls([])
     }
     setOpen(true)
   }
 
-  const uploadImage = async (file: File): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-    const filePath = `meals/${fileName}`
+  const uploadImages = async (files: FileList): Promise<string[]> => {
+    const uploadedUrls: string[] = []
 
-    const { error: uploadError } = await supabase.storage
-      .from('meal-images')
-      .upload(filePath, file)
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `meals/${fileName}`
 
-    if (uploadError) {
-      console.error('Error uploading image:', uploadError)
-      alert(`Failed to upload image: ${uploadError.message}`)
-      return null
+      const { error: uploadError } = await supabase.storage
+        .from('meal-images')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        console.error('Error uploading image:', uploadError)
+        alert(`Failed to upload image ${file.name}: ${uploadError.message}`)
+      } else {
+        const { data } = supabase.storage.from('meal-images').getPublicUrl(filePath)
+        if (data?.publicUrl) {
+          uploadedUrls.push(data.publicUrl)
+        }
+      }
     }
 
-    const { data } = supabase.storage.from('meal-images').getPublicUrl(filePath)
-    return data.publicUrl
+    return uploadedUrls
   }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setUploading(true)
 
-    let finalImageUrl = imageUrl
+    let finalUrls = [...imageUrls]
 
-    if (imageFile) {
-      const uploadedUrl = await uploadImage(imageFile)
-      if (uploadedUrl) {
-        finalImageUrl = uploadedUrl
-      }
+    if (imageFiles && imageFiles.length > 0) {
+      const newUrls = await uploadImages(imageFiles)
+      finalUrls = [...finalUrls, ...newUrls]
     }
 
     const payload = {
@@ -137,7 +143,7 @@ export default function AdminDashboard() {
       description,
       day_of_week: dayOfWeek,
       meal_type: mealType,
-      image_url: finalImageUrl,
+      image_urls: finalUrls,
     }
 
     try {
@@ -197,7 +203,7 @@ export default function AdminDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Image</TableHead>
+                <TableHead>Images</TableHead>
                 <TableHead>Meal Name</TableHead>
                 <TableHead>Day</TableHead>
                 <TableHead>Category</TableHead>
@@ -221,14 +227,19 @@ export default function AdminDashboard() {
                 items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      {item.image_url ? (
-                        <img
-                          src={item.image_url}
-                          alt={item.name}
-                          className="w-12 h-12 object-cover rounded-md border"
-                        />
+                      {item.image_urls && item.image_urls.length > 0 ? (
+                        <div className="flex gap-1 overflow-x-auto max-w-[150px]">
+                          {item.image_urls.map((url, idx) => (
+                            <img
+                              key={idx}
+                              src={url}
+                              alt={`${item.name} ${idx + 1}`}
+                              className="w-10 h-10 object-cover rounded border flex-shrink-0"
+                            />
+                          ))}
+                        </div>
                       ) : (
-                        <div className="w-12 h-12 bg-slate-100 rounded-md border flex items-center justify-center text-xs text-slate-400">
+                        <div className="w-10 h-10 bg-slate-100 rounded border flex items-center justify-center text-[10px] text-slate-400">
                           No Pic
                         </div>
                       )}
@@ -279,7 +290,7 @@ export default function AdminDashboard() {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Eba & Egusi Soup"
+                  placeholder="e.g. Rice, Chicken & Ice Cream"
                   required
                 />
               </div>
@@ -319,15 +330,25 @@ export default function AdminDashboard() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="image">Food Photo</Label>
+                <Label htmlFor="images">Food Photos (Select Multiple)</Label>
                 <Input
-                  id="image"
+                  id="images"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => setImageFiles(e.target.files)}
                 />
-                {imageUrl && !imageFile && (
-                  <p className="text-xs text-slate-500">Current photo uploaded and attached.</p>
+                {imageUrls.length > 0 && (
+                  <div className="flex gap-1 mt-1 overflow-x-auto">
+                    {imageUrls.map((url, i) => (
+                      <img
+                        key={i}
+                        src={url}
+                        alt="Preview"
+                        className="w-12 h-12 object-cover rounded border"
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -337,7 +358,7 @@ export default function AdminDashboard() {
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. Served hot with fresh fish or chicken"
+                  placeholder="e.g. Served with fried rice, baked chicken, and chocolate ice cream"
                 />
               </div>
             </div>
