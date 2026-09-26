@@ -36,7 +36,6 @@ interface MenuItem {
   id: string
   name: string
   description: string
-  price: number
   day_of_week: string
   meal_type: string
 }
@@ -55,7 +54,6 @@ export default function AdminDashboard() {
   // Form State
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [price, setPrice] = useState('')
   const [dayOfWeek, setDayOfWeek] = useState('Monday')
   const [mealType, setMealType] = useState('Breakfast')
 
@@ -83,14 +81,12 @@ export default function AdminDashboard() {
       setEditingId(item.id)
       setName(item.name)
       setDescription(item.description || '')
-      setPrice(item.price ? item.price.toString() : '')
       setDayOfWeek(item.day_of_week)
       setMealType(item.meal_type)
     } else {
       setEditingId(null)
       setName('')
       setDescription('')
-      setPrice('')
       setDayOfWeek('Monday')
       setMealType('Breakfast')
     }
@@ -103,7 +99,6 @@ export default function AdminDashboard() {
     const payload = {
       name,
       description,
-      price: parseFloat(price) || 0,
       day_of_week: dayOfWeek,
       meal_type: mealType,
     }
@@ -166,20 +161,19 @@ export default function AdminDashboard() {
                 <TableHead>Meal Name</TableHead>
                 <TableHead>Day</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Price (₦)</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6 text-slate-500">
+                  <TableCell colSpan={4} className="text-center py-6 text-slate-500">
                     Loading menu items...
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6 text-slate-500">
+                  <TableCell colSpan={4} className="text-center py-6 text-slate-500">
                     No menu items found. Click "+ Add New Meal" to create one.
                   </TableCell>
                 </TableRow>
@@ -198,7 +192,6 @@ export default function AdminDashboard() {
                         {item.meal_type}
                       </Badge>
                     </TableCell>
-                    <TableCell>₦{item.price ? item.price.toLocaleString() : '0'}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button variant="outline" size="sm" onClick={() => handleOpenDialog(item)}>
                         Edit
@@ -234,18 +227,6 @@ export default function AdminDashboard() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Jollof Rice & Fried Chicken"
-                  required
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="price">Price (₦)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="e.g. 2500"
                   required
                 />
               </div>
