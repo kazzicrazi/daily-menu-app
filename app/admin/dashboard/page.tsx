@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MenuQRCode } from '@/components/MenuQRCode'
 import { Button } from '@/components/ui/button'
@@ -41,8 +41,32 @@ interface MenuItem {
   image_urls?: string[]
 }
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
+
+function getCurrentWeekDates() {
+  const now = new Date()
+  const dayOfWeek = now.getDay()
+  const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + distanceToMonday)
+
+  const daysName = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+  return daysName.map((dayName, index) => {
+    const date = new Date(monday)
+    date.setDate(monday.getDate() + index)
+    const formattedDate = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    })
+    return {
+      dayName,
+      formattedDate,
+      fullLabel: `${dayName} (${formattedDate})`,
+    }
+  })
+}
 
 export default function AdminDashboard() {
   const supabase = createClient()
@@ -52,6 +76,8 @@ export default function AdminDashboard() {
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+
+  const weekDays = useMemo(() => getCurrentWeekDates(), [])
 
   // Form State
   const [name, setName] = useState('')
@@ -184,6 +210,11 @@ export default function AdminDashboard() {
     }
   }
 
+  const getDayWithDate = (dayName: string) => {
+    const found = weekDays.find((w) => w.dayName.toLowerCase() === dayName.toLowerCase())
+    return found ? found.fullLabel : dayName
+  }
+
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -205,7 +236,7 @@ export default function AdminDashboard() {
               <TableRow>
                 <TableHead>Images</TableHead>
                 <TableHead>Meal Name</TableHead>
-                <TableHead>Day</TableHead>
+                <TableHead>Day & Date</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -250,7 +281,7 @@ export default function AdminDashboard() {
                         <p className="text-xs text-slate-500 font-normal">{item.description}</p>
                       )}
                     </TableCell>
-                    <TableCell>{item.day_of_week}</TableCell>
+                    <TableCell>{getDayWithDate(item.day_of_week)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
                         {item.meal_type}
@@ -297,15 +328,15 @@ export default function AdminDashboard() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>Day of the Week</Label>
+                  <Label>Day & Date</Label>
                   <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {DAYS.map((day) => (
-                        <SelectItem key={day} value={day}>
-                          {day}
+                      {weekDays.map((day) => (
+                        <SelectItem key={day.dayName} value={day.dayName}>
+                          {day.fullLabel}
                         </SelectItem>
                       ))}
                     </SelectContent>
