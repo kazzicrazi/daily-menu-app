@@ -42,7 +42,7 @@ interface MenuItem {
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const MEAL_TYPES = ['Breakfast', 'Lunch', 'Snacks']
+const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
 
 export default function AdminDashboard() {
   const supabase = createClient()
@@ -59,7 +59,6 @@ export default function AdminDashboard() {
   const [dayOfWeek, setDayOfWeek] = useState('Monday')
   const [mealType, setMealType] = useState('Breakfast')
 
-  // Fetch all menu items from Supabase
   const fetchMenuItems = async () => {
     setLoading(true)
     const { data, error } = await supabase
@@ -79,7 +78,6 @@ export default function AdminDashboard() {
     fetchMenuItems()
   }, [])
 
-  // Open Dialog for Adding or Editing
   const handleOpenDialog = (item?: MenuItem) => {
     if (item) {
       setEditingId(item.id)
@@ -99,7 +97,6 @@ export default function AdminDashboard() {
     setOpen(true)
   }
 
-  // Handle Save (Single declaration of handleSave)
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -136,7 +133,6 @@ export default function AdminDashboard() {
     }
   }
 
-  // Delete Meal
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this menu item?')) {
       const { error } = await supabase.from('menus').delete().eq('id', id)
@@ -150,7 +146,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Canteen Admin Dashboard</h1>
@@ -159,12 +154,10 @@ export default function AdminDashboard() {
         <Button onClick={() => handleOpenDialog()}>+ Add New Meal</Button>
       </div>
 
-      {/* QR Code Section */}
       <div className="flex justify-center my-4">
         <MenuQRCode />
       </div>
 
-      {/* Menu Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -226,7 +219,6 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Add / Edit Dialog Form */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleSave}>
