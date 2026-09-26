@@ -1,165 +1,119 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-
-const DAYS_OF_WEEK = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday'
-]
-
-const CATEGORIES = ['All', 'Breakfast', 'Lunch', 'Snacks']
+import { Button } from '@/components/ui/button'
 
 interface MenuItem {
   id: string
+  name: string
+  description: string
+  price: number
   day_of_week: string
   meal_type: string
-  name: string
-  description?: string
-  price?: number
 }
 
-export default function HomePage() {
-  const [selectedDay, setSelectedDay] = useState<string>('Monday')
-  const [selectedCategory, setSelectedCategory] = useState<string>('All')
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
-  const [loading, setLoading] = useState<boolean>(true)
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
 
+export default function PublicMenuPage() {
   const supabase = createClient()
+  const [items, setItems] = useState<MenuItem[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Auto-detect current day of week
-  useEffect(() => {
-    const todayIndex = new Date().getDay()
-    const dayName = DAYS_OF_WEEK[todayIndex === 0 ? 6 : todayIndex - 1]
-    setSelectedDay(dayName)
-  }, [])
+  // Default to Monday
+  const [selectedDay, setSelectedDay] = useState('Monday')
 
-  // Fetch menu for the selected day
-  useEffect(() => {
-    async function fetchMenu() {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('menus')
-        .select('*')
-        .eq('day_of_week', selectedDay)
+  const fetchMenu = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('menus')
+      .select('*')
+      .eq('day_of_week', selectedDay)
 
-      if (!error && data) {
-        setMenuItems(data)
-      } else {
-        setMenuItems([])
-      }
-      setLoading(false)
+    if (error) {
+      console.error('Error loading menu:', error)
+    } else if (data) {
+      setItems(data)
     }
+    setLoading(false)
+  }
 
+  useEffect(() => {
     fetchMenu()
-  }, [selectedDay, supabase])
-
-  // Filter items dynamically based on selected category
-  const filteredMenuItems = useMemo(() => {
-    if (selectedCategory === 'All') return menuItems
-    return menuItems.filter(
-      (item) => item.meal_type?.toLowerCase() === selectedCategory.toLowerCase()
-    )
-  }, [menuItems, selectedCategory])
+  }, [selectedDay])
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <div className="max-w-md mx-auto space-y-6">
-        {/* Header */}
-        <header className="text-center space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Daily Canteen Menu</h1>
-          <p className="text-sm text-slate-500">Select a day and meal category to preview items</p>
+      <div className="max-w-4xl mx-auto space-y-8">
+        <header className="text-center space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Today's Canteen Menu</h1>
+          <p className="text-slate-600">Freshly prepared daily meals</p>
         </header>
 
-        {/* Day Selector */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {DAYS_OF_WEEK.map((day) => {
-            const isActive = selectedDay === day
-            return (
-              <button
-                key={day}
-                onClick={() => setSelectedDay(day)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow'
-                    : 'bg-white text-slate-600 hover:bg-slate-100 border'
-                }`}
-              >
-                {day}
-              </button>
-            )
-          })}
+        {/* Day Selector Pills */}
+        <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-none justify-start md:justify-center">
+          {DAYS.map((day) => (
+            <Button
+              key={day}
+              variant={selectedDay === day ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedDay(day)}
+              className="rounded-full"
+            >
+              {day}
+            </Button>
+          ))}
         </div>
 
-        {/* Category Filter Pills */}
-        <div className="flex items-center justify-center gap-2">
-          {CATEGORIES.map((category) => {
-            const isActive = selectedCategory === category
-            return (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-                  isActive
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                }`}
-              >
-                {category}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Menu Items List */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center border-b pb-2">
-            <h2 className="text-lg font-semibold text-slate-800">
-              {selectedDay}&apos;s {selectedCategory !== 'All' ? selectedCategory : 'Menu'}
-            </h2>
-            <Badge variant="outline">{filteredMenuItems.length} Items</Badge>
+        {loading ? (
+          <p className="text-center py-12 text-slate-500">Loading menu items...</p>
+        ) : items.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl shadow-sm border p-8">
+            <p className="text-slate-500 text-lg font-medium">No meals listed for {selectedDay}</p>
+            <p className="text-slate-400 text-sm mt-1">Select another day to view scheduled meals.</p>
           </div>
+        ) : (
+          <div className="space-y-8">
+            {MEAL_TYPES.map((category) => {
+              // Filter items for the specific category (case-insensitive)
+              const categoryItems = items.filter(
+                (item) => item.meal_type?.toLowerCase() === category.toLowerCase()
+              )
 
-          {loading ? (
-            <p className="text-center py-8 text-sm text-slate-500">Loading menu...</p>
-          ) : filteredMenuItems.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-slate-500">
-                No {selectedCategory !== 'All' ? selectedCategory.toLowerCase() : ''} items available for {selectedDay}.
-              </CardContent>
-            </Card>
-          ) : (
-            filteredMenuItems.map((item) => (
-              <Card key={item.id} className="shadow-sm">
-                <CardHeader className="p-4 pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-base font-medium">{item.name}</CardTitle>
-                    {item.price && (
-                      <span className="font-semibold text-slate-900">
-                        ₦{item.price.toLocaleString()}
-                      </span>
-                    )}
+              if (categoryItems.length === 0) return null
+
+              return (
+                <section key={category} className="space-y-4">
+                  <div className="flex items-center gap-3 border-b pb-2">
+                    <h2 className="text-xl font-bold text-slate-800">{category}</h2>
+                    <Badge variant="secondary">{categoryItems.length}</Badge>
                   </div>
-                  {item.meal_type && (
-                    <CardDescription className="text-xs capitalize">{item.meal_type}</CardDescription>
-                  )}
-                </CardHeader>
-                {item.description && (
-                  <CardContent className="p-4 pt-0 text-sm text-slate-600">
-                    {item.description}
-                  </CardContent>
-                )}
-              </Card>
-            ))
-          )}
-        </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {categoryItems.map((item) => (
+                      <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-lg font-bold">{item.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          {item.description && (
+                            <p className="text-sm text-slate-600">{item.description}</p>
+                          )}
+                          <p className="text-xl font-extrabold text-emerald-700">
+                            ₦{item.price ? item.price.toLocaleString() : '0'}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </section>
+              )
+            })}
+          </div>
+        )}
       </div>
     </main>
   )
