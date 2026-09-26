@@ -1,90 +1,134 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client' // Adjust import path to your Supabase client helper
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
-interface Menu {
+const DAYS_OF_WEEK = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday'
+]
+
+interface MenuItem {
   id: string
-  date: string
-  breakfast: string
-  lunch: string
-  dinner: string
+  day_of_week: string
+  meal_type: string
+  name: string
+  description?: string
+  price?: number
 }
 
-type MealType = 'breakfast' | 'lunch' | 'dinner' | 'none'
-
-export default function Home() {
-  const [menu, setMenu] = useState<Menu | null>(null)
-  const [activeMeal, setActiveMeal] = useState<MealType>('none')
-  const [loading, setLoading] = useState(true)
+export default function HomePage() {
+  const [selectedDay, setSelectedDay] = useState<string>('Monday')
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
 
   const supabase = createClient()
 
+  // Automatically select current day of the week on initial mount
   useEffect(() => {
-    const hour = new Date().getHours()
-    if (hour >= 6 && hour < 11) setActiveMeal('breakfast')
-    else if (hour >= 11 && hour < 16) setActiveMeal('lunch')
-    else if (hour >= 16 && hour < 22) setActiveMeal('dinner')
-    else setActiveMeal('none')
+    const todayIndex = new Date().getDay()
+    // Map JS Sunday (0) -> index 6, Monday (1) -> index 0
+    const dayName = DAYS_OF_WEEK[todayIndex === 0 ? 6 : todayIndex - 1]
+    setSelectedDay(dayName)
+  }, [])
 
-    async function fetchTodayMenu() {
-      const today = new Date().toISOString().split('T')[0]
-      const { data } = await supabase.from('menus').select('*').eq('date', today).single()
-      if (data) setMenu(data)
+  // Fetch menu whenever selectedDay changes
+  useEffect(() => {
+    async function fetchMenu() {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('menus')
+        .select('*')
+        .eq('day_of_week', selectedDay)
+
+      if (!error && data) {
+        setMenuItems(data)
+      } else {
+        setMenuItems([])
+      }
       setLoading(false)
     }
 
-    fetchTodayMenu()
-  }, [])
-
-  if (loading) {
-    return <div className="flex min-h-screen items-center justify-center">Loading today's menu...</div>
-  }
+    fetchMenu()
+  }, [selectedDay, supabase])
 
   return (
-    <main className="container mx-auto max-w-3xl p-6">
-      <h1 className="mb-2 text-3xl font-bold tracking-tight">Today's Menu</h1>
-      <p className="mb-8 text-muted-foreground">
-        {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-      </p>
+    <main className="min-h-screen bg-slate-50 p-4 md:p-8">
+      <div className="max-w-md mx-auto space-y-6">
+        {/* Header */}
+        <header className="text-center space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Daily Canteen Menu</h1>
+          <p className="text-sm text-slate-500">Select a day to view scheduled meals</p>
+        </header>
 
-      {!menu ? (
-        <p className="text-muted-foreground">No menu available for today.</p>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className={activeMeal === 'breakfast' ? 'ring-2 ring-primary shadow-lg' : ''}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Breakfast</CardTitle>
-              {activeMeal === 'breakfast' && <Badge>Active Now</Badge>}
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-foreground">{menu.breakfast || 'Not specified'}</p>
-            </CardContent>
-          </Card>
-
-          <Card className={activeMeal === 'lunch' ? 'ring-2 ring-primary shadow-lg' : ''}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Lunch</CardTitle>
-              {activeMeal === 'lunch' && <Badge>Active Now</Badge>}
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-foreground">{menu.lunch || 'Not specified'}</p>
-            </CardContent>
-          </Card>
-
-          <Card className={activeMeal === 'dinner' ? 'ring-2 ring-primary shadow-lg' : ''}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Dinner</CardTitle>
-              {activeMeal === 'dinner' && <Badge>Active Now</Badge>}
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-foreground">{menu.dinner || 'Not specified'}</p>
-            </CardContent>
-          </Card>
+        {/* Horizontal Day Selector */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {DAYS_OF_WEEK.map((day) => {
+            const isActive = selectedDay === day
+            return (
+              <button
+                key={day}
+                onClick={() => setSelectedDay(day)}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border'
+                }`}
+              >
+                {day}
+              </button>
+            )
+          })}
         </div>
-      )}
+
+        {/* Menu Items List */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center border-b pb-2">
+            <h2 className="text-lg font-semibold text-slate-800">{selectedDay}&apos;s Special</h2>
+            <Badge variant="outline">{menuItems.length} Items</Badge>
+          </div>
+
+          {loading ? (
+            <p className="text-center py-8 text-sm text-slate-500">Loading menu...</p>
+          ) : menuItems.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-slate-500">
+                No menu items uploaded for {selectedDay} yet.
+              </CardContent>
+            </Card>
+          ) : (
+            menuItems.map((item) => (
+              <Card key={item.id} className="shadow-sm">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-base font-medium">{item.name}</CardTitle>
+                    {item.price && (
+                      <span className="font-semibold text-slate-900">
+                        ₦{item.price.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  {item.meal_type && (
+                    <CardDescription className="text-xs capitalize">{item.meal_type}</CardDescription>
+                  )}
+                </CardHeader>
+                {item.description && (
+                  <CardContent className="p-4 pt-0 text-sm text-slate-600">
+                    {item.description}
+                  </CardContent>
+                )}
+              </Card>
+            ))
+          )}
+        </div>
+      </div>
     </main>
   )
 }
