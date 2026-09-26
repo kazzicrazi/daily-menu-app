@@ -1,7 +1,5 @@
 'use client'
 
-// DELETE THIS LINE:
-export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MenuQRCode } from '@/components/MenuQRCode'
@@ -34,7 +32,6 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
-
 interface MenuItem {
   id: string
   name: string
@@ -45,7 +42,7 @@ interface MenuItem {
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner','Snacks']
+const MEAL_TYPES = ['Breakfast', 'Lunch', 'Snacks']
 
 export default function AdminDashboard() {
   const supabase = createClient()
@@ -62,7 +59,7 @@ export default function AdminDashboard() {
   const [dayOfWeek, setDayOfWeek] = useState('Monday')
   const [mealType, setMealType] = useState('Breakfast')
 
-  // Fetch all menu items
+  // Fetch all menu items from Supabase
   const fetchMenuItems = async () => {
     setLoading(true)
     const { data, error } = await supabase
@@ -70,7 +67,9 @@ export default function AdminDashboard() {
       .select('*')
       .order('created_at', { ascending: false })
 
-    if (!error && data) {
+    if (error) {
+      console.error('Error fetching menu items:', error)
+    } else if (data) {
       setItems(data)
     }
     setLoading(false)
@@ -100,7 +99,7 @@ export default function AdminDashboard() {
     setOpen(true)
   }
 
-  // Handle Save (Create New or Edit Existing Meal)
+  // Handle Save (Single declaration of handleSave)
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -114,7 +113,6 @@ export default function AdminDashboard() {
 
     try {
       if (editingId) {
-        // Update existing meal record
         const { error } = await supabase
           .from('menus')
           .update(payload)
@@ -122,7 +120,6 @@ export default function AdminDashboard() {
 
         if (error) throw error
       } else {
-        // Insert new meal record
         const { error } = await supabase
           .from('menus')
           .insert([payload])
@@ -130,12 +127,12 @@ export default function AdminDashboard() {
         if (error) throw error
       }
 
-      // Close modal and refresh menu list
       setOpen(false)
       fetchMenuItems()
-    } catch (err: any) {
-      console.error('Error saving meal:', err)
-      alert(`Failed to save meal: ${err.message || 'Unknown database error'}`)
+    } catch (err: unknown) {
+      const error = err as Error
+      console.error('Error saving meal:', error)
+      alert(`Failed to save meal: ${error.message || 'Unknown database error'}`)
     }
   }
 
@@ -150,39 +147,6 @@ export default function AdminDashboard() {
       }
     }
   }
-  // Save (Create or Update)
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    const payload = {
-      name,
-      description,
-      price: parseFloat(price) || 0,
-      day_of_week: dayOfWeek,
-      meal_type: mealType,
-    }
-
-    if (editingId) {
-      // Edit existing meal
-      await supabase.from('menus').update(payload).eq('id', editingId)
-    } else {
-      // Create new meal
-      await supabase.from('menus').insert([payload])
-    }
-
-    setOpen(false)
-    fetchMenuItems()
-  }
-
-  // Delete Meal
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this menu item?')) {
-      await supabase.from('menus').delete().eq('id', id)
-      fetchMenuItems()
-    }
-
-  }
-
 
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-6">
@@ -262,13 +226,14 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Add / Edit Dialog */}
+      {/* Add / Edit Dialog Form */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleSave}>
             <DialogHeader>
               <DialogTitle>{editingId ? 'Edit Meal' : 'Add New Meal'}</DialogTitle>
             </DialogHeader>
+
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">Meal Name</Label>
@@ -337,6 +302,7 @@ export default function AdminDashboard() {
                 />
               </div>
             </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
