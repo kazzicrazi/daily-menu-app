@@ -10,7 +10,6 @@ interface MenuItem {
   id: string
   name: string
   description: string
-  price: number
   day_of_week: string
   meal_type: string
 }
@@ -98,14 +97,11 @@ export default function PublicMenuPage() {
                         <CardHeader className="pb-2">
                           <CardTitle className="text-lg font-bold">{item.name}</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-2">
-                          {item.description && (
+                        {item.description && (
+                          <CardContent>
                             <p className="text-sm text-slate-600">{item.description}</p>
-                          )}
-                          <p className="text-xl font-extrabold text-emerald-700">
-                            ₦{item.price ? item.price.toLocaleString() : '0'}
-                          </p>
-                        </CardContent>
+                          </CardContent>
+                        )}
                       </Card>
                     ))}
                   </div>
