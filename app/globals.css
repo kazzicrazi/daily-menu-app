@@ -1,28 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --cpp-dark: #004482;
-  --cpp-brand: #00599C;
-  --cpp-light: #659AD2;
-  --cpp-bg: #F0F5FA;
-  --accent-green: #059669;
-  --accent-red: #DC2626;
+  /* Seplat Brand Colors */
+  --seplat-blue: #002B49;
+  --seplat-blue-light: #00406C;
+  --seplat-green: #00A859;
+  --seplat-green-hover: #008F4C;
+  --seplat-green-light: #E6F6EE;
+  --seplat-bg: #F4F8F6;
 }
 
-/* Custom Helper Utilities for C++ Theme */
-.bg-cpp-dark { background-color: var(--cpp-dark); }
-.bg-cpp-brand { background-color: var(--cpp-brand); }
-.bg-cpp-light { background-color: var(--cpp-light); }
-.bg-cpp-bg { background-color: var(--cpp-bg); }
+/* Helper Utilities for Seplat Brand */
+.bg-seplat-blue { background-color: var(--seplat-blue); }
+.bg-seplat-green { background-color: var(--seplat-green); }
+.bg-seplat-bg { background-color: var(--seplat-bg); }
 
-.text-cpp-dark { color: var(--cpp-dark); }
-.text-cpp-brand { color: var(--cpp-brand); }
+.text-seplat-blue { color: var(--seplat-blue); }
+.text-seplat-green { color: var(--seplat-green); }
 
-.border-cpp-light { border-color: var(--cpp-light); }
-.border-cpp-brand { border-color: var(--cpp-brand); }
-
-.bg-accent-green { background-color: var(--accent-green); }
-.bg-accent-green:hover { background-color: #047857; }
-
-.bg-accent-red { background-color: var(--accent-red); }
-.bg-accent-red:hover { background-color: #B91C1C; }
+.border-seplat-green { border-color: var(--seplat-green); }
+.border-seplat-blue { border-color: var(--seplat-blue); }

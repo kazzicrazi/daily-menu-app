@@ -56,8 +56,6 @@ export default function PublicMenuPage() {
 
   const fetchMenu = async () => {
     setLoading(true)
-
-    // Fetch items matching the selected day (case-insensitive search)
     const { data, error } = await supabase
       .from('menus')
       .select('*')
@@ -75,7 +73,6 @@ export default function PublicMenuPage() {
     fetchMenu()
   }, [selectedDayObj])
 
-  // Get items that don't match standard Breakfast/Lunch/Dinner/Snacks categories
   const uncategorizedItems = items.filter(
     (item) =>
       !item.meal_type ||
@@ -83,15 +80,15 @@ export default function PublicMenuPage() {
   )
 
   return (
-    <main className="min-h-screen bg-slate-100 p-4 md:p-8">
+    <main className="min-h-screen bg-[#F4F8F6] p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
-        <header className="text-center space-y-2 bg-gradient-to-r from-blue-950 via-blue-800 to-blue-950 text-white p-6 rounded-2xl shadow-md border-b-4 border-blue-400">
-          <h1 className="text-3xl font-extrabold tracking-tight">Today's Canteen Menu</h1>
-          <p className="text-blue-100 text-sm">Freshly prepared daily meals for {selectedDayObj.fullLabel}</p>
+        {/* Seplat Dual-Color Header: Navy Blue & Energy Green */}
+        <header className="text-center space-y-2 bg-gradient-to-r from-[#002B49] via-[#00406C] to-[#00A859] text-white p-6 rounded-2xl shadow-lg border-b-4 border-[#00A859]">
+          <h1 className="text-3xl font-extrabold tracking-tight">Canteen Daily Menu</h1>
+          <p className="text-emerald-100 text-sm font-medium">Freshly prepared meals for {selectedDayObj.fullLabel}</p>
         </header>
 
-        {/* Day Selector Pills */}
+        {/* Day Selector Pills with Seplat Accent Colors */}
         <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-none justify-start md:justify-center">
           {weekDays.map((day) => {
             const isSelected = selectedDayObj.dayName === day.dayName
@@ -99,14 +96,14 @@ export default function PublicMenuPage() {
               <button
                 key={day.dayName}
                 onClick={() => setSelectedDayObj(day)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-all shadow-sm flex items-center gap-1.5 flex-shrink-0 ${
+                className={`rounded-full px-4 py-2 text-sm font-bold transition-all shadow-sm flex items-center gap-1.5 flex-shrink-0 ${
                   isSelected
-                    ? 'bg-blue-800 text-white ring-2 ring-blue-400 shadow-md'
-                    : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                    ? 'bg-[#00A859] text-white ring-2 ring-[#002B49] shadow-md'
+                    : 'bg-white text-[#002B49] hover:bg-emerald-50 border border-slate-200'
                 }`}
               >
                 <span>{day.dayName}</span>
-                <span className={`text-xs ${isSelected ? 'text-blue-200' : 'text-slate-400'}`}>
+                <span className={`text-xs ${isSelected ? 'text-emerald-100' : 'text-slate-500'}`}>
                   ({day.formattedDate})
                 </span>
               </button>
@@ -117,13 +114,13 @@ export default function PublicMenuPage() {
         {loading ? (
           <p className="text-center py-12 text-slate-500 font-medium">Loading menu items...</p>
         ) : items.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-slate-200 p-8">
-            <p className="text-slate-600 text-lg font-bold">No meals scheduled for {selectedDayObj.fullLabel}</p>
-            <p className="text-slate-400 text-sm mt-1">Select another day pill above to view items for that day.</p>
+          <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-emerald-100 p-8">
+            <p className="text-[#002B49] text-lg font-bold">No meals scheduled for {selectedDayObj.fullLabel}</p>
+            <p className="text-slate-500 text-sm mt-1">Select another day pill above to view items for that day.</p>
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Standard Categories */}
+            {/* Standard Categories with Blue Headers & Green Badges */}
             {MEAL_TYPES.map((category) => {
               const categoryItems = items.filter(
                 (item) => item.meal_type?.toLowerCase() === category.toLowerCase()
@@ -133,14 +130,17 @@ export default function PublicMenuPage() {
 
               return (
                 <section key={category} className="space-y-4">
-                  <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2">
-                    <h2 className="text-xl font-bold text-blue-900">{category}</h2>
-                    <Badge className="bg-blue-800 hover:bg-blue-900">{categoryItems.length}</Badge>
+                  <div className="flex items-center gap-3 border-b-2 border-emerald-200 pb-2">
+                    <h2 className="text-xl font-bold text-[#002B49]">{category}</h2>
+                    {/* Seplat Green Badge */}
+                    <Badge className="bg-[#00A859] hover:bg-[#008F4C] text-white font-bold px-2.5 py-0.5 rounded-full">
+                      {categoryItems.length}
+                    </Badge>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2">
                     {categoryItems.map((item) => (
-                      <Card key={item.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow border-slate-200">
+                      <Card key={item.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow border-slate-200 bg-white">
                         {item.image_urls && item.image_urls.length > 0 && (
                           <div
                             className={`grid gap-1 bg-slate-100 ${
@@ -162,7 +162,7 @@ export default function PublicMenuPage() {
                           </div>
                         )}
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-lg font-bold text-slate-800">{item.name}</CardTitle>
+                          <CardTitle className="text-lg font-bold text-[#002B49]">{item.name}</CardTitle>
                         </CardHeader>
                         {item.description && (
                           <CardContent>
@@ -176,17 +176,19 @@ export default function PublicMenuPage() {
               )
             })}
 
-            {/* Uncategorized or Legacy Items */}
+            {/* Uncategorized Section */}
             {uncategorizedItems.length > 0 && (
               <section className="space-y-4">
                 <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2">
-                  <h2 className="text-xl font-bold text-blue-900">General Menu</h2>
-                  <Badge className="bg-slate-600">{uncategorizedItems.length}</Badge>
+                  <h2 className="text-xl font-bold text-[#002B49]">General Menu</h2>
+                  <Badge className="bg-[#002B49] text-white font-bold px-2.5 py-0.5 rounded-full">
+                    {uncategorizedItems.length}
+                  </Badge>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2">
                   {uncategorizedItems.map((item) => (
-                    <Card key={item.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow border-slate-200">
+                    <Card key={item.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow border-slate-200 bg-white">
                       {item.image_urls && item.image_urls.length > 0 && (
                         <div
                           className={`grid gap-1 bg-slate-100 ${
@@ -208,7 +210,7 @@ export default function PublicMenuPage() {
                         </div>
                       )}
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-bold text-slate-800">{item.name}</CardTitle>
+                        <CardTitle className="text-lg font-bold text-[#002B49]">{item.name}</CardTitle>
                       </CardHeader>
                       {item.description && (
                         <CardContent>
