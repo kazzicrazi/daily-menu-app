@@ -29,7 +29,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
 interface MenuItem {
@@ -106,7 +106,7 @@ export default function AdminDashboard() {
     fetchMenuItems()
   }, [])
 
-  const handleOpenDialog = (item?: MenuItem) => {
+  const handleOpenDialog = (item?: MenuItem, defaultDay?: string, defaultMealType?: string) => {
     setImageFiles(null)
     if (item) {
       setEditingId(item.id)
@@ -119,8 +119,8 @@ export default function AdminDashboard() {
       setEditingId(null)
       setName('')
       setDescription('')
-      setDayOfWeek('Monday')
-      setMealType('Breakfast')
+      setDayOfWeek(defaultDay || 'Monday')
+      setMealType(defaultMealType || 'Breakfast')
       setImageUrls([])
     }
     setOpen(true)
@@ -210,17 +210,12 @@ export default function AdminDashboard() {
     }
   }
 
-  const getDayWithDate = (dayName: string) => {
-    const found = weekDays.find((w) => w.dayName.toLowerCase() === dayName.toLowerCase())
-    return found ? found.fullLabel : dayName
-  }
-
   return (
-    <div className="container mx-auto p-4 md:p-8 space-y-6">
+    <div className="container mx-auto p-4 md:p-8 space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Canteen Admin Dashboard</h1>
-          <p className="text-sm text-slate-500">Manage daily menu uploads, photos, and edits</p>
+          <p className="text-sm text-slate-500">Structured menu schedule by weekday and category</p>
         </div>
         <Button onClick={() => handleOpenDialog()}>+ Add New Meal</Button>
       </div>
@@ -229,83 +224,116 @@ export default function AdminDashboard() {
         <MenuQRCode />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Images</TableHead>
-                <TableHead>Meal Name</TableHead>
-                <TableHead>Day & Date</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6 text-slate-500">
-                    Loading menu items...
-                  </TableCell>
-                </TableRow>
-              ) : items.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6 text-slate-500">
-                    No menu items found. Click "+ Add New Meal" to create one.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      {item.image_urls && item.image_urls.length > 0 ? (
-                        <div className="flex gap-1 overflow-x-auto max-w-[150px]">
-                          {item.image_urls.map((url, idx) => (
-                            <img
-                              key={idx}
-                              src={url}
-                              alt={`${item.name} ${idx + 1}`}
-                              className="w-10 h-10 object-cover rounded border flex-shrink-0"
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 bg-slate-100 rounded border flex items-center justify-center text-[10px] text-slate-400">
-                          No Pic
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {item.name}
-                      {item.description && (
-                        <p className="text-xs text-slate-500 font-normal">{item.description}</p>
-                      )}
-                    </TableCell>
-                    <TableCell>{getDayWithDate(item.day_of_week)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {item.meal_type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleOpenDialog(item)}>
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {loading ? (
+        <div className="text-center py-12 text-slate-500">Loading structured menu...</div>
+      ) : (
+        <div className="space-y-8">
+          {weekDays.map((day) => {
+            const dayItems = items.filter(
+              (i) => i.day_of_week?.toLowerCase() === day.dayName.toLowerCase()
+            )
+
+            return (
+              <Card key={day.dayName} className="shadow-sm border-slate-200">
+                <CardHeader className="bg-slate-100/70 border-b pb-3 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-xl font-bold text-slate-800">
+                      {day.dayName}
+                    </CardTitle>
+                    <span className="text-sm text-slate-500 font-normal">({day.formattedDate})</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleOpenDialog(undefined, day.dayName)}
+                  >
+                    + Add to {day.dayName}
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {dayItems.length === 0 ? (
+                    <div className="p-6 text-center text-slate-400 text-sm">
+                      No meals scheduled for {day.dayName}.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/50">
+                          <TableHead className="w-[120px]">Category</TableHead>
+                          <TableHead className="w-[120px]">Images</TableHead>
+                          <TableHead>Meal Name & Info</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {MEAL_TYPES.map((category) => {
+                          const categoryItems = dayItems.filter(
+                            (i) => i.meal_type?.toLowerCase() === category.toLowerCase()
+                          )
+
+                          if (categoryItems.length === 0) return null
+
+                          return categoryItems.map((item) => (
+                            <TableRow key={item.id} className="hover:bg-slate-50/80">
+                              <TableCell>
+                                <Badge variant="secondary" className="font-semibold">
+                                  {item.meal_type}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {item.image_urls && item.image_urls.length > 0 ? (
+                                  <div className="flex gap-1 overflow-x-auto max-w-[140px]">
+                                    {item.image_urls.map((url, idx) => (
+                                      <img
+                                        key={idx}
+                                        src={url}
+                                        alt={`${item.name} ${idx + 1}`}
+                                        className="w-10 h-10 object-cover rounded border flex-shrink-0"
+                                      />
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="w-10 h-10 bg-slate-100 rounded border flex items-center justify-center text-[10px] text-slate-400">
+                                    No Pic
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                <div>{item.name}</div>
+                                {item.description && (
+                                  <p className="text-xs text-slate-500 font-normal mt-0.5">
+                                    {item.description}
+                                  </p>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenDialog(item)}
+                                >
+                                  Edit / Add Photos
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDelete(item.id)}
+                                >
+                                  Delete
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[425px]">
